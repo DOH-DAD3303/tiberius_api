@@ -1,0 +1,62 @@
+API call
+
+# this script pulls Tiberius data re: vaccine finder from https://protect-ows.hhs.gov/
+# this script uses 
+
+# import necessary modules/packages
+import requests
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+import pandas as pd
+import io
+from io import SringIO
+
+
+# set the token and dataset RID
+TOKEN = <token>
+DATASETRID = <datasetRID from the website>
+
+# set the parameters for the data pull
+headers = {
+    "Authorization": f'{TOKEN}'
+    }
+url =f'https://protect-ows.hhs.gov/foundry-data-proxy/api/dataproxy/datasets/{DATASETRID}/branches/master/csv/?includeColumnNames=true'
+
+
+# save the pull as response
+response = requests.get(url, headers=headers)
+
+# set the datatype for the response
+response_results = response.text
+
+# save the response as a csv using the StringIO
+pdf = pd.read_csv(io.StringIO(response_results), sep = ',', low_memory = False)
+
+
+# create a delta table
+
+## you might need to manually set up the schema
+
+schema = StructType([
+  StructField('vtrcks_provider_pin', StringType(), True),
+  StructField('ndc_mapped', DoubleType(), True),
+  StructField('awardee', StringType(), True),
+  StructField('provider_number', IntegerType(), True),
+  StructField('org_name', StringType(), True),
+  StructField('on_hand_quantity', IntegerType(), True),
+  StructField('report_date', DateType(), True),
+  StructField('report_timestamp', StringType(), True),
+  StructField('report_timestamp_tz', StringType(), True),
+  StructField('provider_county', StringType(), True),
+  StructField('loc_admin_zip', FloatType(), True),
+  StructField('most_recent_record', IntegerType(), True),
+  StructField('actively_displayed', StringType(), True),
+  StructField('org_covid_id', StringType(), True),
+  StructField('loc_name', StringType(), True)
+])
+
+# create the spark dataframe
+sdf = spark.createDataFrame(df, schema)
+
+# save as a delta table to specific dbfs filepath
+sdf.write.format("delta").mode("overwrite").save('dbfs:/<file_path>')
